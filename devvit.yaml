@@ -1,0 +1,9 @@
+name: modcommand-ai
+version: 0.0.1
+permissions:
+  - posts
+  - comments
+  - users
+  - mail
+  - modnotes
+  - reddit

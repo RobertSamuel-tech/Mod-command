@@ -1,0 +1,20 @@
+{
+  "name": "modcommand-ai",
+  "version": "0.0.0",
+  "description": "Reddit Devvit moderation app.",
+  "main": "src/main.tsx",
+  "scripts": {
+    "dev": "devvit playtest r/modcommandtest",
+    "build": "devvit build",
+    "deploy": "devvit upload"
+  },
+  "dependencies": {
+    "@devvit/public-api": "0.12.23"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "type": "module",
+  "private": true,
+  "license": "BSD-3-Clause"
+}
