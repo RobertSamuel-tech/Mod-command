@@ -24,6 +24,11 @@ function formatAlert(alert: Alert): string {
       return `🔥 report_spike — ${count} reports`;
     case 'copypasta_brigade':
       return `🔥 copypasta_brigade — repeated comments`;
+    case 'keyword_match': {
+      const kw = String(details.keyword ?? '');
+      const title = String(details.title ?? '');
+      return `🔥 keyword_match — "${kw}" in: ${title}`;
+    }
     default:
       return `🔥 ${alert.type}`;
   }
@@ -42,7 +47,10 @@ export const Dashboard = (context: Context) => {
     return getTodayStats(context, subredditId);
   });
 
-  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [alerts, setAlerts] = useState<Alert[]>(async () => {
+    if (!subredditId) return [];
+    return listAlerts(context, subredditId, 10);
+  });
 
   const refreshAll = async () => {
     if (!subredditId) return;

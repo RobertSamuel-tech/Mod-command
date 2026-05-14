@@ -5,6 +5,7 @@ import { runRelease } from './actions/release.js';
 import { Dashboard } from './components/Dashboard.js';
 import { onComment } from './triggers/onComment.js';
 import { onReport } from './triggers/onReport.js';
+import { onPost } from './triggers/onPost.js';
 
 Devvit.configure({
   redditAPI: true,
@@ -94,6 +95,11 @@ Devvit.addMenuItem({
       appearance: 'success',
     });
   },
+});
+
+Devvit.addTrigger({
+  event: 'PostSubmit',
+  onEvent: onPost,
 });
 
 Devvit.addTrigger({
