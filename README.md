@@ -161,7 +161,7 @@ Moderator context-menu action (Defuse / Claim / Release)
                                               │  useInterval 5s → refresh    │
                                               │                              │
                                               │  ┌─ Fire Radar (4 channels) ┐│
-                                              │  ├─ Triage Queue              │
+                                              │  ├─ Triage Queue             │
                                               │  ├─ Mod Team Status          │
                                               │  ├─ Community Health (7d)    │
                                               │  └─ Audit Trail (last 50)   ┘│
