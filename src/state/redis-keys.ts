@@ -27,3 +27,9 @@ export const Keys = {
     return `mc:alerts:${subredditId}`;
   },
 } as const;
+
+type NewKeyNS = 'triage' | 'audit' | 'modteam' | 'health';
+
+export function getRedisKey(ns: NewKeyNS, subredditId: string): string {
+  return `mc:${ns}:${subredditId}`;
+}
