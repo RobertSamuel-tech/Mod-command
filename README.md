@@ -1,8 +1,8 @@
-# ModCommand AI
+# ModCommand
 
 ### Realtime AI-Assisted Moderation Command Center for Reddit
 
-ModCommand AI is a native Reddit moderation platform built entirely on **Reddit Devvit**. It gives mod teams a coordinated, realtime command center — surfaced as a live custom post directly inside their subreddit — with automated threat detection, a prioritized triage queue, per-moderator claim tracking, a full audit trail, and community health dashboards.
+ModCommand is a native Reddit moderation platform built entirely on **Reddit Devvit**. It gives mod teams a coordinated, realtime command center — surfaced as a live custom post directly inside their subreddit — with automated threat detection, a prioritized triage queue, per-moderator claim tracking, a full audit trail, and community health dashboards.
 
 Built for subreddits that outgrow manual moderation workflows and need operational tooling to match.
 
@@ -20,13 +20,13 @@ Reddit moderation at scale is operationally broken:
 - **Manual workflows don't scale** — every action is reactive and isolated; there is no shared operational picture
 - **No accountability trail** — when something goes wrong, reconstructing who took which action and when is difficult
 
-ModCommand AI addresses each of these directly, operating inside Reddit rather than alongside it.
+ModCommand addresses each of these directly, operating inside Reddit rather than alongside it.
 
 ---
 
 ## Solution Overview
 
-ModCommand AI installs as a Devvit app and creates a **Dashboard custom post** inside your subreddit. Every moderator who opens the post sees the same live operational view, synchronized in real time via Devvit's realtime channels.
+ModCommand installs as a Devvit app and creates a **Dashboard custom post** inside your subreddit. Every moderator who opens the post sees the same live operational view, synchronized in real time via Devvit's realtime channels.
 
 **What it does:**
 
@@ -102,7 +102,7 @@ Everything runs **natively inside Reddit**. There is no external dashboard, no t
 
 ## Reddit-Native Integration
 
-ModCommand AI is **not** an external moderation dashboard that mirrors Reddit data to a third-party service. It runs entirely inside Reddit using the Devvit platform.
+ModCommand is **not** an external moderation dashboard that mirrors Reddit data to a third-party service. It runs entirely inside Reddit using the Devvit platform.
 
 - **Custom post type** — the Dashboard is a first-class Reddit post, visible and interactive to any moderator in the subreddit
 - **Server-side triggers** — PostSubmit, CommentSubmit, PostReport, and CommentReport events are handled server-side by Devvit trigger handlers, not by a polling service
@@ -271,7 +271,7 @@ A second keyword pass runs against a curated list of high-severity security term
 
 ## AI Triage Queue
 
-The triage queue is the operational core of ModCommand AI. Rather than presenting a flat list of reports, it organizes flagged content into priority lanes and gives moderators a structured workflow to process it.
+The triage queue is the operational core of ModCommand. Rather than presenting a flat list of reports, it organizes flagged content into priority lanes and gives moderators a structured workflow to process it.
 
 ### Priority Scoring
 
@@ -463,7 +463,7 @@ devvit install r/yoursubreddit
 
 Reddit moderators are volunteers managing communities that can receive thousands of posts and comments per day. The tools available to them have not kept pace with the scale of the problem.
 
-ModCommand AI addresses this with a platform-native solution:
+ModCommand addresses this with a platform-native solution:
 
 - **Faster response** — automated detection fires in milliseconds on PostSubmit, not minutes after a report queue backs up
 - **Reduced moderator burnout** — structured triage means mods work a prioritized queue instead of an undifferentiated flood of reports
@@ -475,7 +475,7 @@ ModCommand AI addresses this with a platform-native solution:
 
 ## Built for the Reddit Devvit Hackathon
 
-ModCommand AI was built to demonstrate what is possible when moderation tooling is treated as a first-class platform concern rather than an afterthought.
+ModCommand was built to demonstrate what is possible when moderation tooling is treated as a first-class platform concern rather than an afterthought.
 
 **What makes it a strong Devvit project:**
 
@@ -484,4 +484,4 @@ ModCommand AI was built to demonstrate what is possible when moderation tooling 
 - **Practical impact** — every feature addresses a documented pain point in Reddit moderation. This is not a demo; it is a working operational tool.
 - **Extensible foundation** — the state layer, trigger architecture, and triage pipeline are designed to support additional detection signals and moderation workflows without restructuring the core.
 
-Reddit gives moderators the responsibility of maintaining healthy communities. ModCommand AI gives them the operational infrastructure to do it effectively.
+Reddit gives moderators the responsibility of maintaining healthy communities. ModCommand gives them the operational infrastructure to do it effectively.

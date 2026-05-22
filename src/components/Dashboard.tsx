@@ -186,7 +186,7 @@ export function Dashboard(ctx: Context) {
   if (loading || !data) {
     return (
       <vstack gap="small" padding="small" alignment="center middle" grow>
-        <text size="large" weight="bold">ModCommand AI</text>
+        <text size="large" weight="bold">ModCommand dashboard</text>
         <text size="xsmall" color="neutral-content-weak">Loading Command Center...</text>
       </vstack>
     );
@@ -213,7 +213,7 @@ export function Dashboard(ctx: Context) {
 
       {/* ── Header ── */}
       <hstack gap="small" alignment="center middle">
-        <text size="large" weight="bold">ModCommand AI</text>
+        <text size="large" weight="bold">ModCommand dashboard</text>
         <spacer grow />
         <text size="xsmall" weight="bold">● LIVE</text>
         <button appearance="secondary" size="small" onPress={() => setView('settings')}>⚙ Settings</button>
@@ -242,10 +242,10 @@ export function Dashboard(ctx: Context) {
           </hstack>
         </vstack>
 
-        {/* AI Triage Queue */}
+        {/* Triage Queue */}
         <vstack gap="small" padding="xsmall" cornerRadius="medium" grow>
           <hstack alignment="center middle">
-            <text size="xsmall" weight="bold">AI TRIAGE QUEUE</text>
+            <text size="xsmall" weight="bold">TRIAGE QUEUE</text>
             <spacer grow />
             <button size="small" onPress={handleClaimNext}>Claim Next</button>
           </hstack>
@@ -263,7 +263,7 @@ export function Dashboard(ctx: Context) {
                   <text size="xsmall" weight="bold" color="#FF4500">● CRIT</text>
                   <text size="xsmall">{critical.title}</text>
                   <spacer grow />
-                  <text size="xsmall" color="neutral-content-weak">AI:{critical.aiScore}%</text>
+                  <text size="xsmall" color="neutral-content-weak">Score:{critical.aiScore}%</text>
                   <button size="small" onPress={() => handleClaim(critical.id)}>Claim</button>
                   <button size="small" appearance="secondary" onPress={() => handleDefuse(critical)}>Defuse</button>
                   <button size="small" appearance="secondary" onPress={() => handleEscalate(critical.id)}>Esc</button>
@@ -274,7 +274,7 @@ export function Dashboard(ctx: Context) {
                   <text size="xsmall" weight="bold" color="#FF8717">● HIGH</text>
                   <text size="xsmall">{high.title}</text>
                   <spacer grow />
-                  <text size="xsmall" color="neutral-content-weak">AI:{high.aiScore}%</text>
+                  <text size="xsmall" color="neutral-content-weak">Score:{high.aiScore}%</text>
                   <button size="small" onPress={() => handleClaim(high.id)}>Claim</button>
                   <button size="small" appearance="secondary" onPress={() => handleDefuse(high)}>Defuse</button>
                 </hstack>
@@ -284,7 +284,7 @@ export function Dashboard(ctx: Context) {
                   <text size="xsmall" weight="bold" color="#46D160">● STD</text>
                   <text size="xsmall">{standard.title}</text>
                   <spacer grow />
-                  <text size="xsmall" color="neutral-content-weak">AI:{standard.aiScore}%</text>
+                  <text size="xsmall" color="neutral-content-weak">Score:{standard.aiScore}%</text>
                   <button size="small" onPress={() => handleClaim(standard.id)}>Claim</button>
                   <button size="small" appearance="secondary" onPress={() => handleDefuse(standard)}>Defuse</button>
                 </hstack>
@@ -328,7 +328,7 @@ export function Dashboard(ctx: Context) {
           </vstack>
 
           <vstack gap="none" padding="xsmall" cornerRadius="small" grow>
-            <text size="xsmall" weight="bold">AI FLAG</text>
+            <text size="xsmall" weight="bold">FLAG</text>
             <text size="xsmall" weight="bold" color={aiFlagAlerts.length > 0 ? '#FF4500' : '#46D160'}>
               {aiFlagAlerts.length > 0 ? `⚠ ${fmtCount(aiFlagAlerts.length)}` : '✓ Clear'}
             </text>
