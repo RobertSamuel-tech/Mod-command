@@ -1,6 +1,6 @@
 # ModCommand
 
-### Realtime AI-Assisted Moderation Command Center for Reddit
+### Realtime Moderation Command Center for Reddit
 
 ModCommand is a native Reddit moderation platform built entirely on **Reddit Devvit**. It gives mod teams a coordinated, realtime command center — surfaced as a live custom post directly inside their subreddit — with automated threat detection, a prioritized triage queue, per-moderator claim tracking, a full audit trail, and community health dashboards.
 
@@ -32,8 +32,8 @@ ModCommand installs as a Devvit app and creates a **Dashboard custom post** insi
 
 | Capability | What it solves |
 |---|---|
-| **Fire Radar** | Automatically detects spam waves, report spikes, keyword threats, and AI-flagged content the moment they appear |
-| **AI Triage Queue** | Prioritizes flagged content into Critical / High / Standard lanes with heuristic scoring so mods work the most important items first |
+| **Fire Radar** | Automatically detects spam waves, report spikes, keyword threats, and flagged content the moment they appear |
+| **Triage Queue** | Prioritizes flagged content into Critical / High / Standard lanes with heuristic scoring so mods work the most important items first |
 | **Claim system** | Lets a mod claim a triage item to signal "I have this" — preventing duplicate effort |
 | **Defuse** | One-click remove + lock directly from the dashboard or any post/comment context menu |
 | **Audit Trail** | Logs every moderation action with timestamp, moderator, and undo capability |
@@ -55,9 +55,9 @@ Everything runs **natively inside Reddit**. There is no external dashboard, no t
 | **Spam Wave Detection** | Detects when ≥ 3 posts or ≥ 5 comments from the same user appear within a 2-minute sliding window | Catches coordinated low-effort floods before they fill the feed |
 | **Report Spike Detection (RPT)** | Fires an alert when the same item receives ≥ 3 reports within 10 minutes | Surfaces genuinely problematic content above the noise floor |
 | **Keyword Detection** | Scans post titles and body text against a curated threat keyword list on every submission | Catches scam, fraud, phishing, and manipulation content at post time |
-| **AI Flag Detection** | Secondary keyword pass for high-severity security language (zero-day, exploit, breach, backdoor) | Escalates technically dangerous content to Critical priority immediately |
-| **Fire Radar** | Live four-panel widget showing SPAM / RPT / KEYWORD / AI FLAG status with timestamps | Gives mod teams a shared threat picture at a glance |
-| **AI Triage Queue** | Priority-scored queue (Critical → High → Standard) with per-item Claim, Defuse, and Escalate controls | Structured workflow that keeps mods working the right items in the right order |
+| **Flag Detection** | Secondary keyword pass for high-severity security language (zero-day, exploit, breach, backdoor) | Escalates technically dangerous content to Critical priority immediately |
+| **Fire Radar** | Live four-panel widget showing SPAM / RPT / KEYWORD / FLAG status with timestamps | Gives mod teams a shared threat picture at a glance |
+| **Triage Queue** | Priority-scored queue (Critical → High → Standard) with per-item Claim, Defuse, and Escalate controls | Structured workflow that keeps mods working the right items in the right order |
 | **Audit Trail** | Timestamped log of the last 50 moderation actions across the team, with Undo support | Creates accountability and makes moderation history reviewable |
 | **Community Health Metrics** | 7-day rolling: fires/day, queue volume, response time, average handle time, with trend indicators | Gives subreddit owners operational visibility into moderation performance |
 | **Mod Team Coordination** | Real-time panel showing each moderator's status (online / busy / away) and today's action count | Situational awareness across the mod team without leaving Reddit |
@@ -72,15 +72,15 @@ Everything runs **natively inside Reddit**. There is no external dashboard, no t
 1. A suspicious post is submitted to the subreddit
 
 2. Fire Radar detects the threat
-   ├── PostSubmit trigger scans title + body for keywords and AI-flag terms
+   ├── PostSubmit trigger scans title + body for keywords and flag terms
    ├── Spam wave detector checks post velocity in a 2-minute sliding window
    └── Report spike detector fires if ≥ 3 reports land within 10 minutes
 
-3. AI Triage Queue receives the item
-   └── Priority assigned: Critical (AI score ≥ 90) → High (≥ 75) → Standard
+3. Triage Queue receives the item
+   └── Priority assigned: Critical (score ≥ 90) → High (≥ 75) → Standard
 
 4. Fire Radar widget updates in real time
-   └── Affected channel (SPAM / RPT / KEYWORD / AI FLAG) flips from ✓ Clear to ⚠
+   └── Affected channel (SPAM / RPT / KEYWORD / FLAG) flips from ✓ Clear to ⚠
 
 5. A moderator sees the alert and claims the triage item
    └── "I have this" — claim locks the item for 5 minutes, visible to the entire team
@@ -122,7 +122,7 @@ Reddit Platform
 │
 ├── PostSubmit ────────► onPost.ts
 │                           ├── Keyword scan (KEYWORD_MATCH list)
-│                           ├── AI-flag scan (AI_FLAG_KEYWORDS list)
+│                           ├── Flag scan (high-severity keyword list)
 │                           ├── Spam wave detector (post velocity, 2-min window)
 │                           └── Report-spike demo trigger (RPT keywords)
 │
@@ -161,9 +161,9 @@ Moderator context-menu action (Defuse / Claim / Release)
                                               │  useInterval 5s → refresh    │
                                               │                              │
                                               │  ┌─ Fire Radar (4 channels) ┐│
-                                              │  ├─ AI Triage Queue          ││
-                                              │  ├─ Mod Team Status          ││
-                                              │  ├─ Community Health (7d)    ││
+                                              │  ├─ Triage Queue              │
+                                              │  ├─ Mod Team Status          │
+                                              │  ├─ Community Health (7d)    │
                                               │  └─ Audit Trail (last 50)   ┘│
                                               └─────────────────────────────┘
 ```
@@ -211,7 +211,7 @@ modcommand/
 │   │                             # defuseTriageItem / escalateTriageItem
 │   │
 │   └── triggers/                 # Devvit server-side event handlers
-│       ├── onPost.ts             # PostSubmit — keyword scan, AI-flag scan, spam wave, triage
+│       ├── onPost.ts             # PostSubmit — keyword scan, flag scan, spam wave, triage
 │       ├── onComment.ts          # CommentSubmit — user velocity + duplicate text detection
 │       └── onReport.ts           # PostReport / CommentReport — report spike detection
 │
@@ -261,15 +261,15 @@ Every post submission is scanned against two keyword lists:
 - **Standard threat keywords** — fraud, scam, phishing, stolen, manipulation, illegal, lawsuit, exposed, hack, malware, crypto, giveaway, airdrop, free money, dm me, and others
 - Post title and body text are both scanned; matches fire a `keyword_match` alert and add the post to the triage queue
 
-### AI FLAG — High-Severity Signal Detection
+### FLAG — High-Severity Signal Detection
 
-A second keyword pass runs against a curated list of high-severity security terms: exploit, breach, zero-day, backdoor, rootkit, compromised, hacked, urgent. Matches fire an `ai_flag` alert and the item is added to the triage queue at Critical priority.
+A second keyword pass runs against a curated list of high-severity security terms: exploit, breach, zero-day, backdoor, rootkit, compromised, hacked, urgent. Matches fire a `flag` alert and the item is added to the triage queue at Critical priority.
 
 **Dashboard behavior:** Each channel displays its current state (✓ Clear or ⚠ N alerts) with the timestamp of the most recent event. Alerts persist in a Redis sorted set capped at 20 entries and expire after 24 hours.
 
 ---
 
-## AI Triage Queue
+## Triage Queue
 
 The triage queue is the operational core of ModCommand. Rather than presenting a flat list of reports, it organizes flagged content into priority lanes and gives moderators a structured workflow to process it.
 
@@ -277,9 +277,9 @@ The triage queue is the operational core of ModCommand. Rather than presenting a
 
 Items enter the queue when a Fire Radar detector fires. Priority is assigned based on the detection signal:
 
-| Detection signal | Priority | Typical AI Score |
+| Detection signal | Priority | Typical Score |
 |---|---|---|
-| AI Flag keyword | Critical | 91+ |
+| Flag keyword | Critical | 91+ |
 | High-score keyword match | Critical | ≥ 90 |
 | Keyword match | High | 75–89 |
 | Report spike | High | 82 |
@@ -382,7 +382,7 @@ These are planned improvements for future iterations:
 - **Smart auto-moderation** — configurable rules that automatically defuse items above a confidence threshold without requiring a mod to act
 - **Behavioral anomaly detection** — detect unusual account patterns (age, karma, post history) as a secondary scoring signal
 - **Moderator analytics** — per-mod dashboards showing response times, action counts, and queue throughput over time
-- **AI-generated moderation summaries** — end-of-day digest of what was flagged, actioned, and resolved
+- **Automated moderation summaries** — end-of-day digest of what was flagged, actioned, and resolved
 - **Mobile moderation alerts** — push notifications for Critical-priority triage items
 
 ---
