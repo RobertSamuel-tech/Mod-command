@@ -7,8 +7,9 @@ export function getLiveChannel(subredditId: string): string {
 }
 
 export type RTMessage = {
-  type: 'CLAIM' | 'RELEASE' | 'FIRE';
+  type: 'CLAIM' | 'RELEASE' | 'FIRE' | 'AUDIT';
   itemId?: string;
   modName?: string;
   details?: unknown;
+  action?: string;
 };

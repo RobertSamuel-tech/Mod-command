@@ -1,0 +1,10 @@
+{
+  "extends": "./node_modules/@devvit/public-api/devvit.tsconfig.json",
+  "compilerOptions": {
+    "types": [],
+    "rootDir": "src",
+    "outDir": "dist",
+    "noEmit": true
+  },
+  "include": ["src/**/*"]
+}

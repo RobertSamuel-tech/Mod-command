@@ -1,7 +1,7 @@
 import type { Context } from '@devvit/public-api';
 import { Keys } from './redis-keys.js';
 
-export type StatField = 'defuses' | 'claims' | 'fires';
+export type StatField = 'defuses' | 'claims' | 'fires' | 'restores';
 
 export interface DailyStats {
   defuses: number;

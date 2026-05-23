@@ -13,6 +13,9 @@ import { getCommunityHealth } from '../state/health.js';
 import type { HealthMetrics } from '../state/health.js';
 import { getLiveChannel } from '../realtime/channels.js';
 import { runDefuse } from '../actions/defuse.js';
+import { restoreItem } from '../actions/restore.js';
+import { getConfig, setConfig } from '../state/config.js';
+import type { ModConfig } from '../state/config.js';
 
 const fmtTime = (iso: string): string => {
   const d = new Date(iso);
@@ -23,8 +26,11 @@ const fmtTs = (ts?: number): string => (ts ? fmtTime(new Date(ts).toISOString())
 const trendArrow = (n: number): string => (n > 0 ? '↑' : n < 0 ? '↓' : '→');
 const fmtCount = (n: number): string => (n > 0 ? `${n}` : '—');
 
-// JSON-safe shapes for useAsync — Alert.details is Record<string,unknown> and
-// TriageItem.claimedBy is optional (both break JSONValue); normalise here.
+const CONFIG_PRESETS = [
+  'scam', 'fraud', 'phishing', 'hack', 'malware',
+  'crypto', 'giveaway', 'airdrop', 'free money', 'dm me', 'stolen', 'urgent',
+];
+
 type SafeAlert = { type: string; details: JSONObject | null; ts: number };
 type SafeTriageItem = {
   id: string; itemId: string; title: string;
@@ -39,6 +45,7 @@ type DashData = {
   audit: AuditAction[];
   modTeam: ModStatus[];
   health: HealthMetrics;
+  config: ModConfig;
   timeSaved: number;
   autoActions: number;
   modActions: number;
@@ -48,21 +55,36 @@ type DashData = {
 
 type View = 'main' | 'settings' | 'analytics';
 
+// Module-level render counter — does NOT cause state changes
+let _renderCount = 0;
+
 export function Dashboard(ctx: Context) {
-  const [view, setView]       = useState<View>('main');
-  const [lastSync, setLastSync] = useState<string>(new Date().toISOString());
-  const [tick, setTick]       = useState<number>(0);
+  _renderCount++;
+
+  // ── All hooks must be declared before any early returns ───────────────────
+  const [view, setView]           = useState<View>('main');
+  const [lastSync, setLastSync]   = useState<string>(new Date().toISOString());
+  const [tick, setTick]           = useState<number>(0);
+  const [cfgPatch, setCfgPatch]   = useState<Partial<ModConfig>>({});
+  const [cfgSaving, setCfgSaving] = useState<boolean>(false);
+  const [init, setInit]           = useState<boolean>(false);
+
+  console.log(`[Dashboard] RENDER #${_renderCount} view=${view} tick=${tick} init=${init}`);
 
   const subredditId = ctx.subredditId ?? 'unknown';
+
   const channel = useChannel<{ type: string }>({
     name: getLiveChannel(subredditId),
-    onMessage: (msg) => { if (msg?.type) setTick((t) => t + 1); },
+    onMessage: (msg) => {
+      console.log('[Dashboard] REALTIME msg:', msg?.type);
+      if (msg?.type) setTick((t) => t + 1);
+    },
   });
-  channel.subscribe();
 
   const { data, loading } = useAsync<DashData>(
     async (): Promise<DashData> => {
-      const [stats, , rawAlerts, rawTriage, audit, modTeam, health, debugRaw, lastTrigger] =
+      console.log(`[Dashboard] useAsync RUN — tick=${tick}`);
+      const [stats, , rawAlerts, rawTriage, audit, modTeam, health, config, debugRaw, lastTrigger] =
         await Promise.all([
           getTodayStats(ctx, subredditId),
           listActiveClaims(ctx, subredditId),
@@ -71,6 +93,7 @@ export function Dashboard(ctx: Context) {
           getRecentActions(ctx, subredditId, 6),
           getModTeamStatus(ctx, subredditId),
           getCommunityHealth(ctx, subredditId),
+          getConfig(ctx, subredditId),
           ctx.redis.get(`mc:debug_mode:${subredditId}`),
           ctx.redis.get(`mc:debug:last_trigger:${subredditId}`),
         ]);
@@ -94,6 +117,7 @@ export function Dashboard(ctx: Context) {
         audit,
         modTeam,
         health,
+        config,
         timeSaved,
         autoActions,
         modActions,
@@ -105,44 +129,77 @@ export function Dashboard(ctx: Context) {
   );
 
   const refreshInterval = useInterval(() => {
+    console.log('[Dashboard] INTERVAL FIRE — tick bump');
     setTick((t) => t + 1);
     setLastSync(new Date().toISOString());
   }, 5000);
-  refreshInterval.start();
 
-  const refresh = () => setTick((t) => t + 1);
+  // ── One-time subscription / interval start (GUARDED) ─────────────────────
+  // Without this guard, every render creates a new timer and re-subscribes,
+  // causing exponential timer accumulation → "Exceeded maximum iterations".
+  if (!init) {
+    console.log('[Dashboard] ONE-TIME INIT: subscribe + start interval');
+    channel.subscribe();
+    refreshInterval.start();
+    setInit(true);
+  }
+
+  // ── Action handlers ───────────────────────────────────────────────────────
+
+  const refresh = () => {
+    console.log('[Dashboard] MANUAL REFRESH');
+    setTick((t) => t + 1);
+  };
 
   const handleClaimNext = async () => {
+    console.log('[Dashboard] ACTION: claimNext');
     const item = data?.triage?.find((t) => !t.claimedBy);
     if (!item) { ctx.ui.showToast('No unclaimed items in queue'); return; }
     await claimTriageItem(ctx, subredditId, item.id, ctx.userId ?? 'system');
     ctx.ui.showToast(`Claimed ${item.id}`);
     refresh();
   };
-  const handleClaim    = async (id: string) => { await claimTriageItem(ctx, subredditId, id, ctx.userId ?? 'system'); refresh(); };
+  const handleClaim = async (id: string) => {
+    console.log('[Dashboard] ACTION: claim', id);
+    await claimTriageItem(ctx, subredditId, id, ctx.userId ?? 'system');
+    refresh();
+  };
   const handleDefuse = async (item: SafeTriageItem) => {
-    console.log('[queue defuse] clicked — item.id:', item.id, 'postId:', item.itemId);
+    console.log('[Dashboard] ACTION: defuse — item.id:', item.id, 'postId:', item.itemId);
     try {
       const post = await ctx.reddit.getPostById(item.itemId);
-      console.log('[queue defuse] fetched post:', post.id, '— running defuse');
-      await runDefuse(post, ctx); // remove + lock + stats + audit + realtime
-      console.log('[queue defuse] reddit remove() success');
+      console.log('[Dashboard] defuse fetched post:', post.id);
+      await runDefuse(post, ctx);
     } catch (err) {
-      console.error('[queue defuse] reddit removal failed:', err);
+      console.error('[Dashboard] defuse failed:', err);
       ctx.ui.showToast({ text: 'Defuse failed — check mod permissions', appearance: 'neutral' });
-      return; // don't clear queue if Reddit removal failed
+      return;
     }
     try {
       await defuseTriageItem(ctx, subredditId, item.id, ctx.userId ?? 'system');
-      console.log('[queue defuse] queue cleanup success');
     } catch (err) {
-      console.error('[queue defuse] queue cleanup failed:', err);
+      console.error('[Dashboard] defuse queue cleanup failed:', err);
     }
     refresh();
   };
-  const handleEscalate = async (id: string) => { await escalateTriageItem(ctx, subredditId, id); refresh(); };
-  const handleUndo     = async (_id: string) => { ctx.ui.showToast('Undo requested (hook to restore.ts)'); refresh(); };
+  const handleEscalate = async (id: string) => {
+    console.log('[Dashboard] ACTION: escalate', id);
+    await escalateTriageItem(ctx, subredditId, id);
+    refresh();
+  };
+  const handleUndo = async (postId: string) => {
+    console.log('[Dashboard] ACTION: undo/restore', postId);
+    try {
+      await restoreItem(ctx, subredditId, postId);
+      ctx.ui.showToast({ text: '↩ Post restored and re-approved', appearance: 'success' });
+    } catch (err) {
+      console.error('[Dashboard] restore failed:', err);
+      ctx.ui.showToast({ text: 'Restore failed — check mod permissions', appearance: 'neutral' });
+    }
+    refresh();
+  };
   const handleToggleDebug = async () => {
+    console.log('[Dashboard] ACTION: toggleDebug');
     const key = `mc:debug_mode:${subredditId}`;
     const cur = await ctx.redis.get(key);
     if (cur === '1') {
@@ -154,21 +211,26 @@ export function Dashboard(ctx: Context) {
     }
     refresh();
   };
+  const handleSaveConfig = async () => {
+    console.log('[Dashboard] ACTION: saveConfig');
+    if (!data) return;
+    setCfgSaving(true);
+    try {
+      const merged: ModConfig = { ...data.config, ...cfgPatch };
+      await setConfig(ctx, subredditId, merged);
+      setCfgPatch({});
+      ctx.ui.showToast({ text: 'Settings saved', appearance: 'success' });
+      console.log('[Dashboard] setView → main (after save)');
+      setView('main');
+      refresh();
+    } catch (err) {
+      console.error('[Dashboard] config save failed:', err);
+      ctx.ui.showToast({ text: 'Save failed', appearance: 'neutral' });
+    }
+    setCfgSaving(false);
+  };
 
-  // ── Static views ──────────────────────────────────────────────────────────
-
-  if (view === 'settings') {
-    return (
-      <vstack gap="small" padding="small" grow>
-        <hstack gap="small" alignment="center middle">
-          <text size="large" weight="bold">Settings</text>
-          <spacer grow />
-          <button size="small" onPress={() => setView('main')}>← Back</button>
-        </hstack>
-        <text size="xsmall" color="neutral-content-weak">Settings panel — configure keyword rules and thresholds here.</text>
-      </vstack>
-    );
-  }
+  // ── Analytics view ────────────────────────────────────────────────────────
 
   if (view === 'analytics') {
     return (
@@ -176,18 +238,133 @@ export function Dashboard(ctx: Context) {
         <hstack gap="small" alignment="center middle">
           <text size="large" weight="bold">Analytics</text>
           <spacer grow />
-          <button size="small" onPress={() => setView('main')}>← Back</button>
+          <button size="small" onPress={() => { console.log('[Dashboard] setView → main'); setView('main'); }}>← Back</button>
         </hstack>
         <text size="xsmall" color="neutral-content-weak">Analytics panel — detailed mod activity charts coming soon.</text>
       </vstack>
     );
   }
 
+  // ── Loading ───────────────────────────────────────────────────────────────
+
   if (loading || !data) {
     return (
       <vstack gap="small" padding="small" alignment="center middle" grow>
         <text size="large" weight="bold">ModCommand dashboard</text>
         <text size="xsmall" color="neutral-content-weak">Loading Command Center...</text>
+      </vstack>
+    );
+  }
+
+  // ── Settings / Config panel ───────────────────────────────────────────────
+
+  if (view === 'settings') {
+    const cfg: ModConfig = { ...data.config, ...cfgPatch };
+
+    const toggleKw = (kw: string) => {
+      console.log('[Dashboard] ACTION: toggleKw', kw);
+      const has = cfg.keywords.includes(kw);
+      setCfgPatch({
+        ...cfgPatch,
+        keywords: has ? cfg.keywords.filter((k) => k !== kw) : [...cfg.keywords, kw],
+      });
+    };
+
+    return (
+      <vstack gap="small" padding="small" grow>
+
+        {/* Header */}
+        <hstack gap="small" alignment="center middle">
+          <text size="large" weight="bold">Configure</text>
+          <spacer grow />
+          <button size="small" onPress={() => { console.log('[Dashboard] setView → main (cancel)'); setCfgPatch({}); setView('main'); }}>← Back</button>
+        </hstack>
+
+        {/* Keywords */}
+        <vstack gap="none">
+          <hstack gap="small" alignment="center middle">
+            <text size="xsmall" weight="bold">KEYWORDS</text>
+            <text size="xsmall" color="neutral-content-weak">({cfg.keywords.length} active — tap to toggle)</text>
+          </hstack>
+          <text size="xsmall" color="neutral-content-weak">Toggle words that trigger realtime alerts</text>
+        </vstack>
+        <hstack gap="small">
+          {CONFIG_PRESETS.slice(0, 6).map((kw) => (
+            <button
+              key={kw}
+              size="small"
+              appearance={cfg.keywords.includes(kw) ? 'primary' : 'secondary'}
+              onPress={() => toggleKw(kw)}
+            >{kw}</button>
+          ))}
+        </hstack>
+        <hstack gap="small">
+          {CONFIG_PRESETS.slice(6).map((kw) => (
+            <button
+              key={kw}
+              size="small"
+              appearance={cfg.keywords.includes(kw) ? 'primary' : 'secondary'}
+              onPress={() => toggleKw(kw)}
+            >{kw}</button>
+          ))}
+        </hstack>
+
+        {/* Spam threshold */}
+        <hstack gap="small" alignment="center middle">
+          <vstack grow>
+            <text size="xsmall" weight="bold">Spam Threshold</text>
+            <text size="xsmall" color="neutral-content-weak">Posts within 2 minutes before spam alert</text>
+          </vstack>
+          <hstack gap="small" alignment="center middle">
+            <button size="small" onPress={() => setCfgPatch({ ...cfgPatch, spamThreshold: Math.max(1, cfg.spamThreshold - 1) })}>-</button>
+            <text weight="bold">{cfg.spamThreshold.toString()}</text>
+            <button size="small" onPress={() => setCfgPatch({ ...cfgPatch, spamThreshold: Math.min(10, cfg.spamThreshold + 1) })}>+</button>
+          </hstack>
+        </hstack>
+
+        {/* Report spike threshold */}
+        <hstack gap="small" alignment="center middle">
+          <vstack grow>
+            <text size="xsmall" weight="bold">Report Spike</text>
+            <text size="xsmall" color="neutral-content-weak">Reports required before escalation</text>
+          </vstack>
+          <hstack gap="small" alignment="center middle">
+            <button size="small" onPress={() => setCfgPatch({ ...cfgPatch, reportThreshold: Math.max(1, cfg.reportThreshold - 1) })}>-</button>
+            <text weight="bold">{cfg.reportThreshold.toString()}</text>
+            <button size="small" onPress={() => setCfgPatch({ ...cfgPatch, reportThreshold: Math.min(10, cfg.reportThreshold + 1) })}>+</button>
+          </hstack>
+        </hstack>
+
+        {/* Flag sensitivity */}
+        <hstack gap="small" alignment="center middle">
+          <vstack grow>
+            <text size="xsmall" weight="bold">Flag Sensitivity</text>
+            <text size="xsmall" color="neutral-content-weak">Triage escalation aggressiveness</text>
+          </vstack>
+          <hstack gap="small">
+            {(['low', 'medium', 'high'] as const).map((l) => (
+              <button
+                key={l}
+                size="small"
+                appearance={cfg.flagSensitivity === l ? 'primary' : 'secondary'}
+                onPress={() => setCfgPatch({ ...cfgPatch, flagSensitivity: l })}
+              >{l[0].toUpperCase() + l.slice(1)}</button>
+            ))}
+          </hstack>
+        </hstack>
+
+        <spacer size="small" />
+
+        {/* Save / Cancel */}
+        <hstack gap="small">
+          <button grow appearance="primary" onPress={handleSaveConfig} disabled={cfgSaving}>
+            {cfgSaving ? 'Saving…' : 'Save Settings'}
+          </button>
+          <button grow appearance="secondary" onPress={() => { console.log('[Dashboard] setView → main (cancel)'); setCfgPatch({}); setView('main'); }}>
+            Cancel
+          </button>
+        </hstack>
+
       </vstack>
     );
   }
@@ -206,7 +383,7 @@ export function Dashboard(ctx: Context) {
   const keywordAlerts = alerts.filter((a) => a.type === 'keyword_match');
   const aiFlagAlerts  = alerts.filter((a) => a.type === 'ai_flag');
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // ── Main view ─────────────────────────────────────────────────────────────
 
   return (
     <vstack gap="small" padding="xsmall" grow>
@@ -216,7 +393,7 @@ export function Dashboard(ctx: Context) {
         <text size="large" weight="bold">ModCommand dashboard</text>
         <spacer grow />
         <text size="xsmall" weight="bold">● LIVE</text>
-        <button appearance="secondary" size="small" onPress={() => setView('settings')}>⚙ Settings</button>
+        <button appearance="secondary" size="small" onPress={() => { console.log('[Dashboard] setView → settings'); setView('settings'); }}>⚙ Settings</button>
       </hstack>
 
       {/* ── Row 1: Time Saved + Triage Queue ── */}
@@ -299,7 +476,7 @@ export function Dashboard(ctx: Context) {
         <hstack alignment="center middle">
           <text size="xsmall" weight="bold">🔥 FIRE RADAR</text>
           <spacer grow />
-          <button appearance="plain" size="small" onPress={() => setView('settings')}>Configure →</button>
+          <button appearance="plain" size="small" onPress={() => { console.log('[Dashboard] setView → settings (configure)'); setView('settings'); }}>Configure →</button>
         </hstack>
 
         <hstack gap="small">
@@ -407,8 +584,8 @@ export function Dashboard(ctx: Context) {
                 <text size="xsmall" color="neutral-content-weak">{action.target.substring(0, 14)}</text>
                 <spacer grow />
                 {action.undoable ? (
-                  <button size="small" appearance="secondary" onPress={() => handleUndo(action.id)}>Undo</button>
-                ) : undefined}
+                  <button size="small" appearance="secondary" onPress={() => handleUndo(action.target)}>Undo</button>
+                ) : null}
               </hstack>
             ))}
           </vstack>
