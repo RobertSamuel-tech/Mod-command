@@ -301,6 +301,21 @@ If a moderator claims an item, the claim is visible to every other mod with the 
 
 ---
 
+## Configurable Threat System
+
+ModCommand includes a fully configurable moderation policy panel, editable directly from the dashboard without leaving Reddit.
+
+| Setting | Description |
+|---|---|
+| **Threat keywords** | Enable or disable individual threat keyword categories |
+| **Spam velocity** | Adjust post-per-window threshold *(1–10 posts per window)* |
+| **Report spike sensitivity** | Tune the report spike trigger *(1–10 reports per window)* |
+| **AI flag aggressiveness** | Control detection sensitivity *(Low / Medium / High)* |
+
+All configuration is stored per-subreddit in Redis. Changes take effect immediately — no redeploy, no config file, no external dashboard.
+
+---
+
 ## Audit Trail
 
 The audit trail is a transparent, timestamped log of moderation actions taken across the team.
@@ -451,11 +466,22 @@ devvit install r/yoursubreddit
 
 ## Demo
 
-| | |
+| Demo | Link |
 |---|---|
-| **Demo Video** | _Coming soon_ |
-| **Screenshots** | _Coming soon_ |
+| **Demo Video** | [Watch on YouTube](https://youtu.be/zCG32blbo_0?si=M31ToFspxtq_6XNy) |
+| **Live Dashboard** | [r/modcommandtest](https://www.reddit.com/r/modcommandtest/) |
 | **Architecture Diagram** | See [Architecture](#architecture) section above |
+
+---
+
+## Why ModCommand Wins
+
+| Judging Criteria | How ModCommand Delivers |
+|---|---|
+| **Community Impact** | Eliminates moderator collisions, reduces alert fatigue, automates threat detection at post time |
+| **Polish** | Production-grade architecture, configurable rules, full moderation lifecycle, clean Devvit Blocks UI |
+| **Reliable UX** | Native Reddit install, no API keys, no external servers, realtime sync across all open dashboards |
+| **Ecosystem Impact** | First realtime command-center class tool in the Devvit ecosystem; applicable to every subreddit with 2+ mods |
 
 ---
 
@@ -485,3 +511,17 @@ ModCommand was built to demonstrate what is possible when moderation tooling is 
 - **Extensible foundation** — the state layer, trigger architecture, and triage pipeline are designed to support additional detection signals and moderation workflows without restructuring the core.
 
 Reddit gives moderators the responsibility of maintaining healthy communities. ModCommand gives them the operational infrastructure to do it effectively.
+
+---
+
+## Links
+
+🔗 **Live Dashboard:** https://www.reddit.com/r/modcommandtest/  
+📦 **Source Code:** https://github.com/RobertSamuel-tech/Mod-command  
+🎥 **Demo Video:** https://youtu.be/zCG32blbo_0?si=M31ToFspxtq_6XNy
+
+---
+
+# ModCommand transforms Reddit moderation from reactive cleanup into proactive realtime defense.
+
+### Built with Devvit. Built for moderators. Built for scale.
